@@ -227,8 +227,6 @@ Distributed Locking in Other Languages
 * NodeJS - https://github.com/thedeveloper/warlock
 '''
 
-import etcd
-import pylibmc
 import redis
 
 
@@ -245,31 +243,8 @@ class _Backends(object):
         'default_args': (),
         'default_kwargs': {},
     }
-    ETCD = {
-        'name': 'ETCD',
-        'library': 'etcd',
-        'client_class': etcd.Client,
-        'lock_class': 'EtcdLock',
-        'default_args': (),
-        'default_kwargs': {},
-    }
-    MEMCACHED = {
-        'name': 'MEMCACHED',
-        'library': 'pylibmc',
-        'client_class': pylibmc.Client,
-        'lock_class': 'MCLock',
-        'default_args': (
-            ['localhost'],
-        ),
-        'default_kwargs': {
-            'binary': True,
-        },
-    }
-
     _valid_backends = (
         REDIS,
-        ETCD,
-        MEMCACHED,
     )
 
     def register(self, name, lock_class, library, client_class,

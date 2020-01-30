@@ -2,7 +2,6 @@
     Tests for all sorts of locks.
 '''
 
-import etcd
 import redis
 import sherlock
 import unittest
@@ -25,12 +24,6 @@ class TestBaseLock(unittest.TestCase):
         sherlock.configure(namespace='new_namespace')
         lock = sherlock.lock.BaseLock('lockname')
         self.assertEqual(lock.namespace, 'new_namespace')
-
-    def test_init_does_not_use_global_default_for_client_obj(self):
-        client_obj = etcd.Client()
-        sherlock.configure(client=client_obj)
-        lock = sherlock.lock.BaseLock('lockname')
-        self.assertNotEqual(lock.client, client_obj)
 
     def test__locked_raises_not_implemented_error(self):
         def _test(): sherlock.lock.BaseLock('')._locked
@@ -108,12 +101,6 @@ class TestLock(unittest.TestCase):
         self.assertRaises(sherlock.lock.LockException, lock.release)
         self.assertRaises(sherlock.lock.LockException, lock.locked)
 
-    def test_lock_creates_proxy_when_backend_is_set(self):
-        sherlock._configuration.backend = sherlock.backends.ETCD
-        lock = sherlock.lock.Lock('')
-        self.assertTrue(isinstance(lock._lock_proxy,
-                                   sherlock.lock.EtcdLock))
-
     def test_lock_uses_proxys_methods(self):
         sherlock.lock.RedisLock._acquire = Mock(return_value=True)
         sherlock.lock.RedisLock._release = Mock()
@@ -130,12 +117,6 @@ class TestLock(unittest.TestCase):
 
         lock.locked()
         self.assertTrue(sherlock.lock.RedisLock.locked.called)
-
-    def test_lock_sets_client_object_on_lock_proxy_when_globally_configured(self):
-        client = etcd.Client(host='8.8.8.8')
-        sherlock.configure(client=client)
-        lock = sherlock.lock.Lock('lock')
-        self.assertEqual(lock._lock_proxy.client, client)
 
 
 class TestRedisLock(unittest.TestCase):
@@ -156,46 +137,4 @@ class TestRedisLock(unittest.TestCase):
 
         sherlock.configure(namespace='global_namespace')
         lock = sherlock.lock.RedisLock(name)
-        self.assertEqual(lock._key_name, 'global_namespace_%s' % name)
-
-
-class TestEtcdLock(unittest.TestCase):
-
-    def setUp(self):
-        reload(sherlock)
-        reload(sherlock.lock)
-
-    def test_valid_key_names_are_generated_when_namespace_not_set(self):
-        name = 'lock'
-        lock = sherlock.lock.EtcdLock(name)
-        self.assertEqual(lock._key_name, '/' + name)
-
-    def test_valid_key_names_are_generated_when_namespace_is_set(self):
-        name = 'lock'
-        lock = sherlock.lock.EtcdLock(name, namespace='local_namespace')
-        self.assertEqual(lock._key_name, '/local_namespace/%s' % name)
-
-        sherlock.configure(namespace='global_namespace')
-        lock = sherlock.lock.EtcdLock(name)
-        self.assertEqual(lock._key_name, '/global_namespace/%s' % name)
-
-
-class TestMCLock(unittest.TestCase):
-
-    def setUp(self):
-        reload(sherlock)
-        reload(sherlock.lock)
-
-    def test_valid_key_names_are_generated_when_namespace_not_set(self):
-        name = 'lock'
-        lock = sherlock.lock.MCLock(name)
-        self.assertEqual(lock._key_name, name)
-
-    def test_valid_key_names_are_generated_when_namespace_is_set(self):
-        name = 'lock'
-        lock = sherlock.lock.MCLock(name, namespace='local_namespace')
-        self.assertEqual(lock._key_name, 'local_namespace_%s' % name)
-
-        sherlock.configure(namespace='global_namespace')
-        lock = sherlock.lock.MCLock(name)
         self.assertEqual(lock._key_name, 'global_namespace_%s' % name)
